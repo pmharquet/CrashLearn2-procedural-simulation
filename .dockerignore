@@ -1,0 +1,12 @@
+.git
+__pycache__
+*.pyc
+*.nbc
+*.nbi
+.pytest_cache
+.venv
+venv
+.env
+.env.*
+logs
+recordings
