@@ -1,0 +1,8 @@
+graft src
+graft tests
+graft docs
+graft deployment
+include docker-compose.yml
+include .dockerignore
+include AGENTS.md
+global-exclude *.py[cod] *.nbc *.nbi

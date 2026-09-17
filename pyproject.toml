@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crashlearn-sim"
+version = "0.1.0"
+description = "Courses multi-agents sur circuits fixes et routes procédurales"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT AND GPL-3.0-only"
+license-files = ["LICENSE", "src/crashlearn_sim/resources/maps/LICENSE"]
+dependencies = [
+    "numpy>=1.26",
+    "numba>=0.60",
+    "onnxruntime>=1.18",
+    "pygame>=2.6",
+    "gymnasium>=1.0",
+    "stable-baselines3>=2.4",
+    "gym==0.26.2",
+    "moderngl>=5.12,<6",
+    "scipy>=1.7.3",
+    "Pillow>=9.0.1",
+    "PyYAML>=5.3.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff==0.16.8", "build>=1.2"]
+legacy = ["matplotlib>=3.7"]
+monitoring = ["tensorboard"]
+freeze = ["pyinstaller>=6.10,<7"]
+
+[project.scripts]
+crashlearn = "crashlearn_sim.app:main"
+crashlearn-train = "crashlearn_sim.training:main"
+crashlearn-record = "crashlearn_sim.legacy.record:main"
+crashlearn-replay = "crashlearn_sim.legacy.replay:main"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["crashlearn_sim*", "f110_gym*"]
+exclude = ["f110_gym.unittest*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+crashlearn_sim = ["resources/maps/**/*", "resources/maps/LICENSE", "resources/maps/README.md"]
+f110_gym = ["envs/maps/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+include = ["src/crashlearn_sim/**/*.py", "tests/**/*.py", "deployment/windows/*.py"]
+extend-exclude = ["src/f110_gym", "src/crashlearn_sim/resources", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E402"]
+
+[tool.ruff.format]
+line-ending = "lf"

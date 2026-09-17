@@ -17,3 +17,6 @@ logs/
 recordings/
 episode.npz
 episode.mp4
+.ruff_cache/
+.coverage
+htmlcov/
