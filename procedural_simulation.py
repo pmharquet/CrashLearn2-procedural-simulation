@@ -53,6 +53,36 @@ def scan_walls(pos, yaw, left, right):
     return scan
 
 @njit(cache=True)
+def scan_vehicles(pos, yaw, scan, states, status, agent_id):
+    """Clip wall ranges against active opponents' collision rectangles.
+
+    Hit IDs: -1 = no vehicle (wall or range limit), otherwise car slot.
+    """
+    hits = np.full(100, -1, dtype=np.int32)
+    for j in range(len(states)):
+        if j == agent_id or status[j] != 1:
+            continue
+        c, s = np.cos(states[j,4]), np.sin(states[j,4])
+        delta = pos-states[j,:2]
+        ox, oy = c*delta[0]+s*delta[1], -s*delta[0]+c*delta[1]
+        for r in range(100):
+            angle = yaw+LIDAR_ANGLES[r]-states[j,4]
+            dx, dy = np.cos(angle), np.sin(angle)
+            enter, leave = 0., 15.
+            for origin, direction, half in ((ox,dx,.29),(oy,dy,.155)):
+                if abs(direction) < 1e-10:
+                    if abs(origin) > half:
+                        leave = -1.
+                else:
+                    a, b = (-half-origin)/direction, (half-origin)/direction
+                    enter = max(enter,min(a,b))
+                    leave = min(leave,max(a,b))
+            if enter <= leave and enter < scan[r]:
+                scan[r] = max(.1,enter)
+                hits[r] = j
+    return hits
+
+@njit(cache=True)
 def project_center(pos, center):
     best = 1e30
     progress = 0.
@@ -260,12 +290,14 @@ class ProceduralSimulation:
             raise ValueError('Invalid car slot')
         i = agent_id
         state = self.states[i]
-        scan_key = (i, float(state[0]), float(state[1]), float(state[4]))
+        scan_key = (i, self.states[:,[0,1,4]].tobytes(), self.status.tobytes())
         if scan_key not in self._scan_cache:
             scan = scan_walls(state[:2],state[4],self.road.left,self.road.right)
+            hits = scan_vehicles(state[:2],state[4],scan,self.states,self.status,i)
             scan = np.clip(scan*self.scan_noise[i],.1,15.).astype(np.float32)
             scan[self.scan_dropouts[i]] = .1
-            self._scan_cache[scan_key] = scan
+            hits[self.scan_dropouts[i]] = -1
+            self._scan_cache[scan_key] = (scan,hits)
         c,s = np.cos(state[4]),np.sin(state[4])
         opponents = {}
         for j in range(4):
@@ -275,7 +307,8 @@ class ProceduralSimulation:
             opponents[j] = dict(rel_x=float(c*dx+s*dy),rel_y=float(-s*dx+c*dy),
                                 rel_dist=float(np.hypot(dx,dy)),rel_yaw=yaw,
                                 velocity=float(self.states[j,3]) if active else 0.,active=int(active))
-        return dict(lidar=self._scan_cache[scan_key].copy(),velocity=float(state[3]),steering=float(state[2]),
+        scan,hits = self._scan_cache[scan_key]
+        return dict(lidar=scan.copy(),lidar_vehicle_ids=hits.copy(),velocity=float(state[3]),steering=float(state[2]),
                     progress=float((max(0.,self.distances[i])%self.sector_length)/self.sector_length),
                     distance_m=float(self.distances[i]),lap_count=int(self.sectors[i]),
                     rank=self.ranks()[i],agent_id=i,opponents=opponents,friction=self.friction)
@@ -431,4 +464,5 @@ class ProceduralSimulation:
                     generated=self.road.generated,removed=self.road.removed,events=list(self.events),
                     road_sections=[section for section in self.road.sections if section['start']<=self.road.center[-1,3]],road_rejections=self.road.rejected,road_repairs=self.road.repairs,
                     lidar=[self.observation(i)['lidar'].tolist() for i in range(self.num_cars)],
+                    lidar_vehicle_ids=[self.observation(i)['lidar_vehicle_ids'].tolist() for i in range(self.num_cars)],
                     finish_distance=self.finish_distance,terminated=self.terminated,truncated=self.truncated)
