@@ -2,9 +2,9 @@
 
 Un simulateur de course pour observer et entraîner des IA sur une **route qui se construit devant les voitures et disparaît derrière elles**. Quatre véhicules, une météo qui modifie l’adhérence et des tracés reproductibles à partir d’une graine.
 
-![Interface RC à ×10 : voitures personnalisables, vue rapprochée puis aperçu du circuit](docs/media/course-x10.gif)
+![Interface RC : vue rapprochée à ×3 puis aperçu du circuit à ×6](docs/media/course-rc.gif)
 
-*120 secondes de simulation en 12 secondes de GIF, en boucle à 12 images/s. Nouvelle interface RC et rendu GPU : 8 secondes en vue rapprochée, puis 4 secondes en vue large. Course démarrée avec quatre agents ONNX `submission/procedural`, graine 6 et météo dynamique. L’export est calculé hors ligne ; ses compteurs de lecture ne mesurent pas les performances en temps réel de la machine.*
+*48 secondes de simulation en 12 secondes de GIF, en boucle à 12 images/s. Nouvelle interface RC et rendu GPU : 8 secondes en vue rapprochée à ×3, puis 4 secondes en vue large à ×6. Course démarrée avec quatre agents ONNX `submission/procedural`, graine 6 et météo dynamique. L’export est calculé hors ligne ; ses compteurs de lecture ne mesurent pas les performances en temps réel de la machine.*
 
 [Démarrage](#démarrage) · [Commandes](#commandes) · [Météo et circuits](#météo-et-circuits) · [Entraînement](#entraînement) · [Vérification](#vérification)
 
@@ -174,7 +174,7 @@ Pour régénérer le GIF du README avec le rendu du simulateur :
 .venv/Scripts/python tools/export_demo_gif.py
 ```
 
-L’export utilise l’agent par défaut ou `--agent CHEMIN` et produit `docs/media/course-x10.gif` : 144 images, 12 images/s, lecture ×10. Pillow est nécessaire uniquement pour cet export.
+L’export utilise l’agent par défaut ou `--agent CHEMIN` et produit `docs/media/course-rc.gif` : 144 images, 12 images/s, lecture ×10. Pillow est nécessaire uniquement pour cet export.
 
 ## Organisation du projet
 

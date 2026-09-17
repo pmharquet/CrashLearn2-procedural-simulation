@@ -1,4 +1,4 @@
-"""Export the actual simulator renderer at exactly 10x playback speed."""
+"""Export the RC renderer at 3x close-up and 6x in the overview."""
 import argparse
 import os
 from pathlib import Path
@@ -21,7 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--agent',type=Path)
     parser.add_argument('--seed',type=int,default=6)
-    parser.add_argument('--output',type=Path,default=Path('docs/media/course-x10.gif'))
+    parser.add_argument('--output',type=Path,default=Path('docs/media/course-rc.gif'))
     parser.add_argument('--renderer',choices=('auto','gpu','software'),default='auto')
     args = parser.parse_args()
     sim = ProceduralSimulation(args.seed,num_cars=4,weather='dynamic')
@@ -35,16 +35,22 @@ def main():
         screen = window.screen
         renderer = RaceRenderer(screen,window.gpu)
         ui = dict(follow=0,camera_yaw=0.,overview=False,infos=True,lidar=False,
-                  trails=True,paused=False,speed=10,actual_speed=10.,fps=12.,
-                  ticks_per_second=200.,ai_per_second=0.,
-                  replay=True,recording=False,message='EXPORT HORS LIGNE / LECTURE x10')
+                  trails=True,paused=False,speed=3,actual_speed=3.,fps=12.,
+                  ticks_per_second=60.,ai_per_second=0.,
+                  replay=True,recording=False,message='EXPORT HORS LIGNE')
         # GIF durations must be multiples of 10 ms. 80/80/90 ms gives
-        # 12 frames/s; each frame advances exactly 10 times its duration.
+        # 12 frames/s. Accumulate integer milliseconds so fractional decision
+        # ticks are carried forward, without drift at either playback speed.
         # Offline encoding does not claim a realtime performance measurement.
         durations = [80,80,90]*48
+        pending_ms = 0
         for index,duration in enumerate(durations):
             pygame.event.pump()
-            for _ in range(duration//5):
+            ui['overview'] = index>=96
+            speed = 6 if ui['overview'] else 3
+            ui.update(speed=speed,actual_speed=float(speed),ticks_per_second=20.*speed)
+            ticks,pending_ms = divmod(pending_ms+duration*speed,50)
+            for _ in range(ticks):
                 if sim.terminated or sim.truncated:
                     raise RuntimeError('Race ended before the requested capture was complete')
                 drive(sim,agents)
@@ -56,7 +62,6 @@ def main():
                 ui['follow'] = next(i for i in range(4) if sim.status[i] == 1)
             # Keep one continuous race: eight seconds close-up, four seconds
             # showing the streamed course, without changing the simulation.
-            ui['overview'] = index>=96
             renderer._hud_key = None
             renderer.draw(sim.snapshot(),ui)
             if window.gpu:
@@ -70,6 +75,8 @@ def main():
             frames.append(frame)
             if (index+1)%24 == 0:
                 print(f'{index+1}/144 frames, {sim.steps*sim.dt:.0f}s simulated',flush=True)
+        if pending_ms or sim.steps != 960:
+            raise RuntimeError('Expected 24 simulated seconds per view')
         # Sample the whole race, including changing weather, for one stable
         # palette. Reserve exact UI/car colors even when they occupy few pixels.
         samples = Image.new('RGB',(96*12,68))
