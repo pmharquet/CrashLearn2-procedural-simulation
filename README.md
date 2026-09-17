@@ -18,6 +18,32 @@ Un simulateur de course pour observer et entraîner des IA sur une **route qui s
 
 ## Démarrage
 
+### Compétition avec menus et exécutable Windows
+
+Lancer `.venv/Scripts/python crashlearn.py` pour choisir parmi les 23 circuits
+originaux ou le procédural, fixer un nombre de tours / secteurs (ou l’infini),
+puis préparer 1 à 4 voitures dans le paddock : nom, couleur et pilote externe.
+Les panneaux de course et le rendu RC existants sont conservés.
+
+L’explorateur accepte `agent.py`, `model.onnx` accompagné de son `agent.py`
+dans le même dossier, ou un PPO `.zip` du simulateur (102 / 131 entrées).
+Chaque pilote Python expose `Agent().predict(obs, info)` et retourne
+`(vitesse, direction)`. Ses dépendances doivent être disponibles ; les poids
+restent à leur emplacement. Les pilotes Python peuvent importer NumPy et ONNX Runtime
+dans la distribution Windows. Chaque voiture dispose d’un processus isolé.
+
+Le départ se fait après **3, 2, 1**. **Échap / Arrêter** revient au paddock ;
+**R** recommence avec les mêmes paramètres. Le classement final propose
+**Retour au menu** et **Recommencer**. Les raccourcis du HUD (pause, météo,
+caméra, capteurs, traces, vitesse, enregistrement et replay) restent disponibles.
+En mode compétition, les enregistrements vont dans `%LOCALAPPDATA%/CrashLearn/recordings`.
+L’infini enlève la limite de distance ; les règles d’abandon restent actives.
+
+Pour construire sous Windows : `./build_exe.ps1`. Lancer ensuite
+`dist/CrashLearn/CrashLearn.exe`. Distribuer **tout le dossier `dist/CrashLearn`**,
+qui inclut le moteur et les circuits ; Python n’est pas nécessaire sur la machine cible.
+La démo et les outils d’entraînement ci-dessous restent utilisables séparément.
+
 ### Prérequis
 
 - Python **3.12 recommandé**.
