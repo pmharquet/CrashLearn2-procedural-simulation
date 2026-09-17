@@ -12,7 +12,7 @@ Un simulateur de course pour observer et entraîner des IA sur une **route qui s
 
 - **Route infinie à mémoire bornée** : lignes droites, courbes ouvertes, chicanes successives, épingles serrées et virages au-delà de 180°.
 - **Course de 1 à 4 IA** : collisions, classement, secteurs chronométrés et redémarrage automatique quand la course est terminée.
-- **Physique et capteurs** : dynamique F110, LiDAR calculé sur les rails, adhérence variable, bruit et pertes de mesure.
+- **Physique et capteurs** : dynamique F110, LiDAR calculé sur les rails et les voitures, adhérence variable, bruit et pertes de mesure.
 - **Démonstration interactive** : caméra embarquée ou vue large, fenêtre redimensionnable, plein écran, panneaux masquables et vitesse ×1 à ×10.
 - **Entraînement et relecture** : environnement Gymnasium, PPO, enregistrement progressif SQLite et replay sans modèle IA.
 
@@ -149,7 +149,8 @@ L’épisode finit quand la voiture entraînée abandonne ou atteint l’arrivé
 <summary>Physique, capteurs et règles de course</summary>
 
 - Dynamique F1TENTH single-track, intégration RK4 à **100 Hz**, décisions à **20 Hz**, délai de braquage de **20 ms**.
-- LiDAR : **100 rayons de −π à +π**, portée **15 m**, intersections avec les rails. Comme pour l’agent d’origine, les voitures sont transmises via `opponents`, pas comme obstacles LiDAR.
+- LiDAR : **100 rayons de −π à +π**, portée **15 m**, distance au premier rail ou véhicule actif rencontré. Les voitures utilisent le même rectangle orienté que les collisions (0,58 × 0,31 m), sans détecter la voiture émettrice. Bruit et pertes de mesure sont appliqués après les intersections.
+- `lidar_vehicle_ids` : 100 identifiants alignés sur `lidar`, dans les observations et les frames enregistrées. Une valeur de 0 à 3 identifie la voiture touchée ; `-1` signifie rail, portée maximale ou mesure perdue. Cette identification vient de la géométrie du simulateur. Les positions et vitesses restent disponibles dans `opponents`. Les voitures ayant abandonné ou terminé sont exclues, comme pour les collisions physiques.
 - Contacts : empreinte du véhicule contrôlée à 100 Hz, arrêt contre les rails, séparation et impulsion entre voitures. Un contact autorise une tentative de dégagement.
 - Abandon : **4 s sans progression**, ou **plus de 100 m de retard**. La démo suit une voiture encore active et redémarre quand la course est terminée.
 - Course infinie : secteurs de **100 m** à la place de tours fermés. `lap_count` compte les secteurs, `progress` mesure l’avancement dans le secteur et `distance_m` la distance totale. Les 32 derniers chronos sont conservés.
