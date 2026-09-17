@@ -5,3 +5,4 @@ pygame>=2.6
 gymnasium>=1.0
 stable-baselines3>=2.4
 gym==0.26.2
+moderngl>=5.12,<6

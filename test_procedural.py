@@ -170,7 +170,7 @@ class RaceSystemsTests(unittest.TestCase):
             wet = advance(wet,4.,.12,.55)
         self.assertGreater(np.linalg.norm(dry-wet),.001)
 
-    def test_opponents_wall_lidar_and_self_mask(self):
+    def test_opponents_lidar_and_self_mask(self):
         sim = ProceduralSimulation(num_cars=4)
         obs = sim.observation(0)
         self.assertEqual(obs['opponents'][0]['active'],0)
@@ -178,9 +178,47 @@ class RaceSystemsTests(unittest.TestCase):
         self.assertAlmostEqual(obs['opponents'][1]['rel_y'],1.1)
         scan = obs['lidar'].copy()
         sim.states[1,0] += 3.
-        np.testing.assert_array_equal(scan,sim.observation(0)['lidar'])
+        self.assertFalse(np.array_equal(scan,sim.observation(0)['lidar']))
+        self.assertNotIn(0,obs['lidar_vehicle_ids'])
         sim._retire(1,'test')
         self.assertEqual(sim.observation(0)['opponents'][1]['active'],0)
+        self.assertNotIn(1,sim.observation(0)['lidar_vehicle_ids'])
+
+    def test_vehicle_scan_geometry_and_occlusion(self):
+        from procedural_simulation import scan_vehicles, LIDAR_ANGLES
+        states = np.zeros((3,7))
+        states[1,0], states[2,0] = 2.,4.
+        status = np.ones(3,dtype=np.int32)
+        scan = np.full(100,15.,dtype=np.float32)
+        hits = scan_vehicles(states[0,:2],0.,scan,states,status,0)
+        self.assertEqual(hits[49],1)
+        self.assertAlmostEqual(float(scan[49]),1.71/np.cos(LIDAR_ANGLES[49]),places=5)
+        self.assertEqual(hits[0],-1)
+        states[1,4] = np.pi/2
+        scan[:] = 15.
+        scan_vehicles(states[0,:2],0.,scan,states,status,0)
+        self.assertAlmostEqual(float(scan[49]),1.845/np.cos(LIDAR_ANGLES[49]),places=5)
+        # A nearer wall hides both vehicles.
+        scan[:] = 1.
+        hits = scan_vehicles(states[0,:2],0.,scan,states,status,0)
+        self.assertTrue(np.all(hits == -1))
+        np.testing.assert_array_equal(scan,np.ones(100))
+        # Retired/finished cars are excluded, as in physical contacts.
+        status[1:] = [0,2]
+        scan[:] = 15.
+        hits = scan_vehicles(states[0,:2],0.,scan,states,status,0)
+        self.assertTrue(np.all(hits == -1))
+        self.assertTrue(np.all(scan == 15.))
+
+    def test_vehicle_scan_dropouts_and_copy(self):
+        sim = ProceduralSimulation(num_cars=2)
+        sim.scan_dropouts[0,:] = True
+        sim._scan_cache.clear()
+        obs = sim.observation(0)
+        self.assertTrue(np.all(obs['lidar'] == np.float32(.1)))
+        self.assertTrue(np.all(obs['lidar_vehicle_ids'] == -1))
+        obs['lidar_vehicle_ids'][:] = 99
+        self.assertTrue(np.all(sim.observation(0)['lidar_vehicle_ids'] == -1))
 
     def test_rectangle_contact_and_impulse(self):
         from procedural_simulation import contact_vector
@@ -284,13 +322,14 @@ class RaceSystemsTests(unittest.TestCase):
                 if not keys: return []
                 key = keys.pop(0)
                 return [pygame.event.Event(pygame.KEYDOWN,key=key,mod=pygame.KMOD_ALT if key == pygame.K_RETURN else 0)]
-            class Driver:
-                def predict(self,obs,info): return 3.,0.
             with tempfile.TemporaryDirectory() as root:
                 path = Path(root)/'controls.sqlite'
-                argv = ['procedural_demo.py','--cars','1','--record',str(path),'--frames','30']
-                with patch.object(sys,'argv',argv),patch.object(pygame.event,'get',events),patch.object(
-                        procedural_demo,'make_agents',return_value=[Driver()]):
+                agent = Path(root)/'agent'
+                agent.mkdir()
+                (agent/'model.onnx').touch()
+                (agent/'agent.py').write_text('class Agent:\n    def predict(self,obs,info): return 3.,0.\n')
+                argv = ['procedural_demo.py','--agent',str(agent),'--cars','1','--record',str(path),'--frames','30']
+                with patch.object(sys,'argv',argv),patch.object(pygame.event,'get',events):
                     procedural_demo.main()
                 replay = RaceReplay(path)
                 try:
@@ -338,7 +377,7 @@ class RaceSystemsTests(unittest.TestCase):
                     renderer = RaceRenderer(surface)
                     renderer.draw(frame,ui)
                     self.assertIs(renderer.screen,surface)
-                    self.assertEqual(len(renderer.buttons),9)
+                    self.assertEqual(len(renderer.buttons),18)
                     for name,rect in renderer.buttons.items():
                         self.assertTrue(surface.get_rect().contains(rect),(size,name,rect))
                         self.assertEqual([n for n,r in renderer.buttons.items() if r.collidepoint(rect.center)],[name])
