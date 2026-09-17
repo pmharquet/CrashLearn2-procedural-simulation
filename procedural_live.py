@@ -24,15 +24,24 @@ def interpolate_frame(previous,current,fraction):
     return dict(current,states=states)
 
 
-def _run(args,commands,frames):
+def _run(args,commands,frames,stop=None):
     recorder = None
+    pilots = None
     try:
         from procedural_demo import make_agents, drive
         from procedural_simulation import ProceduralSimulation, WEATHER_MODES, ROAD_PROFILES
         from procedural_recording import RaceRecorder
-        sim = ProceduralSimulation(args.seed,num_cars=args.cars,weather=args.weather,
-                                   profile=args.profile,finish_distance=args.finish_distance)
-        agents = make_agents(args)
+        competition = getattr(args, 'competition', None)
+        if competition:
+            from race_competition import CompetitionSimulation
+            from race_pilots import PilotPool
+            sim = CompetitionSimulation(competition)
+            pilots = PilotPool(competition, sim, stop)
+            agents = None
+        else:
+            sim = ProceduralSimulation(args.seed,num_cars=args.cars,weather=args.weather,
+                                       profile=args.profile,finish_distance=args.finish_distance)
+            agents = make_agents(args)
         last_recording = args.record
         if args.record:
             recorder = RaceRecorder(args.record)
@@ -58,7 +67,7 @@ def _run(args,commands,frames):
                 try: frames.put_nowait(packet)
                 except Full: pass
         publish()
-        while True:
+        while stop is None or not stop.is_set():
             dirty = False
             while commands.poll():
                 command,value = commands.recv()
@@ -72,6 +81,7 @@ def _run(args,commands,frames):
                     sim.set_weather(WEATHER_MODES[(WEATHER_MODES.index(sim.weather_mode)+1)%len(WEATHER_MODES)])
                     sim._refresh_noise()
                 elif command in ('reset','profile'):
+                    if competition: continue  # The launcher owns race transitions.
                     if command == 'profile': sim.profile = ROAD_PROFILES[(ROAD_PROFILES.index(sim.profile)+1)%len(ROAD_PROFILES)]
                     sim.reset(sim.seed+1)
                     accumulator = restart = 0.
@@ -83,7 +93,7 @@ def _run(args,commands,frames):
                         recorder = None
                         message = 'Sauvegarde : '+last_recording.name
                     elif command == 'record':
-                        last_recording = Path('recordings')/('race-'+datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'.sqlite')
+                        last_recording = Path(getattr(args,'recording_dir','recordings'))/('race-'+datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'.sqlite')
                         recorder = RaceRecorder(last_recording)
                         recorder.append(sim.snapshot())
                         message = last_recording.name
@@ -95,7 +105,7 @@ def _run(args,commands,frames):
             if not paused:
                 if sim.terminated or sim.truncated:
                     restart += elapsed
-                    if restart >= 1.5:
+                    if not competition and restart >= 1.5:
                         sim.reset(sim.seed+1)
                         accumulator = restart = 0.
                         if recorder: recorder.append(sim.snapshot())
@@ -106,7 +116,10 @@ def _run(args,commands,frames):
                         if accumulator < sim.dt: break
                         ai_calls += int((sim.status == 1).sum())
                         step_started = time.perf_counter()
-                        drive(sim,agents)
+                        if pilots:
+                            sim.step(pilots.actions(sim))
+                        else:
+                            drive(sim,agents)
                         step_seconds += time.perf_counter()-step_started
                         ticks += 1
                         accumulator -= sim.dt
@@ -121,22 +134,26 @@ def _run(args,commands,frames):
     except BaseException:
         commands.send(dict(error=traceback.format_exc()))
     finally:
+        if pilots: pilots.close()
         if recorder: recorder.close()
         frames.cancel_join_thread()
         commands.close()
 
 
 class LiveRace:
-    def __init__(self,args):
+    def __init__(self,args,wait=True):
         ctx = mp.get_context('spawn')
+        self.stop = ctx.Event()
         self.commands,child = ctx.Pipe()
         self.frames = ctx.Queue(maxsize=2)
-        self.process = ctx.Process(target=_run,args=(args,child,self.frames),daemon=True)
+        self.process = ctx.Process(target=_run,args=(args,child,self.frames,self.stop),
+                                   daemon=not bool(getattr(args,'competition',None)))
         self.process.start()
         child.close()
         self.packet = None
         self.previous = None
         self.pace = None
+        if not wait: return
         # Warmup includes Numba compilation / ONNX initialization, outside FPS timing.
         deadline = time.perf_counter()+120
         try:
@@ -191,8 +208,8 @@ class LiveRace:
         return Path(result['last_recording']) if result['last_recording'] else None
 
     def close(self):
+        self.stop.set()
         if self.process.is_alive():
-            self.send('close')
             self.process.join(5)
             if self.process.is_alive():
                 self.process.terminate()

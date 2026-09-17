@@ -369,6 +369,10 @@ class ProceduralSimulation:
                     self.states[i,3] = np.clip(old_i[3]+impulse*np.dot(normal,heading_i),-2,10)
                     self.states[j,3] = np.clip(old_j[3]-impulse*np.dot(normal,heading_j),-2,10)
 
+    def project_progress(self, i):
+        absolute, _ = self.road.project(self.states[i,:2])
+        return absolute-self.starts[i]
+
     def step(self, action):
         if self.terminated or self.truncated:
             raise RuntimeError('Episode finished: call reset()')
@@ -404,8 +408,7 @@ class ProceduralSimulation:
         for i in range(self.num_cars):
             if self.status[i] != 1:
                 continue
-            absolute,_ = self.road.project(self.states[i,:2])
-            self.distances[i] = absolute-self.starts[i]
+            self.distances[i] = self.project_progress(i)
             self.idles[i] = 0 if self.distances[i] > self.best[i]+1e-5 else self.idles[i]+1
             self.best[i] = max(self.best[i], self.distances[i])
             sector = int(self.best[i]//self.sector_length)
