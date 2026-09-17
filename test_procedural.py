@@ -338,7 +338,7 @@ class RaceSystemsTests(unittest.TestCase):
                     renderer = RaceRenderer(surface)
                     renderer.draw(frame,ui)
                     self.assertIs(renderer.screen,surface)
-                    self.assertEqual(len(renderer.buttons),9)
+                    self.assertEqual(len(renderer.buttons),18)
                     for name,rect in renderer.buttons.items():
                         self.assertTrue(surface.get_rect().contains(rect),(size,name,rect))
                         self.assertEqual([n for n,r in renderer.buttons.items() if r.collidepoint(rect.center)],[name])

@@ -157,6 +157,9 @@ def main():
                 elif command == 'faster': ui['speed'] = min(10,ui['speed']+1)
                 elif command == 'slower': ui['speed'] = max(1,ui['speed']-1)
                 elif command == 'follow': ui['follow'] = (ui['follow']+1)%len(frame['states'])
+                elif command.startswith('paint_'):
+                    from procedural_art import PALETTE
+                    renderer.colors[ui['follow']] = PALETTE[int(command.split('_')[1])]
                 elif command == 'replay':
                     if replay:
                         replay.close(); replay = None
