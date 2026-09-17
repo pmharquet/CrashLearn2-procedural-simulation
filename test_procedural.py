@@ -284,13 +284,14 @@ class RaceSystemsTests(unittest.TestCase):
                 if not keys: return []
                 key = keys.pop(0)
                 return [pygame.event.Event(pygame.KEYDOWN,key=key,mod=pygame.KMOD_ALT if key == pygame.K_RETURN else 0)]
-            class Driver:
-                def predict(self,obs,info): return 3.,0.
             with tempfile.TemporaryDirectory() as root:
                 path = Path(root)/'controls.sqlite'
-                argv = ['procedural_demo.py','--cars','1','--record',str(path),'--frames','30']
-                with patch.object(sys,'argv',argv),patch.object(pygame.event,'get',events),patch.object(
-                        procedural_demo,'make_agents',return_value=[Driver()]):
+                agent = Path(root)/'agent'
+                agent.mkdir()
+                (agent/'model.onnx').touch()
+                (agent/'agent.py').write_text('class Agent:\n    def predict(self,obs,info): return 3.,0.\n')
+                argv = ['procedural_demo.py','--agent',str(agent),'--cars','1','--record',str(path),'--frames','30']
+                with patch.object(sys,'argv',argv),patch.object(pygame.event,'get',events):
                     procedural_demo.main()
                 replay = RaceReplay(path)
                 try:
