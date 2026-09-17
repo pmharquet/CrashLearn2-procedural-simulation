@@ -219,7 +219,7 @@ class RaceRenderer:
             try:
                 self._draw_hud(frame,ui,width,height,states,min(ui['follow'],len(states)-1),center)
                 self._draw_controls(frame,ui,width,height)
-                if ui['paused'] or frame['terminated'] or frame['truncated']:
+                if not frame.get('competition') and (ui['paused'] or frame['terminated'] or frame['truncated']):
                     self.panel((width//2-195,height//2-25,390,53))
                     self.text('PAUSE' if ui['paused'] else 'COURSE TERMINEE / REDEPART',width//2-177,height//2-8,ACCENT)
             finally:
@@ -347,7 +347,7 @@ class RaceRenderer:
                 flash.fill((185,210,231,24)); screen.blit(flash,(0,0))
         self._draw_hud(frame,ui,width,height,states,follow,center)
         self._draw_controls(frame,ui,width,height)
-        if ui['paused'] or frame['terminated'] or frame['truncated']:
+        if not frame.get('competition') and (ui['paused'] or frame['terminated'] or frame['truncated']):
             message = 'PAUSE' if ui['paused'] else 'COURSE TERMINEE / REDEPART'
             self.panel((width//2-195,height//2-25,390,53))
             self.text(message,width//2-177,height//2-8,self.colors[0])
@@ -360,7 +360,7 @@ class RaceRenderer:
         self.panel((20,18,width-40,76))
         pygame.draw.rect(screen,ACCENT,(36,35,6,40),border_radius=3)
         self.text('CRASH / LEARN',54,28,TEXT,self.big)
-        self.text('RADIO CONTROL  /  PROCEDURAL RACING',55,62,MUTED,self.small)
+        self.text('RADIO CONTROL  /  '+frame.get('track_name','PROCEDURAL RACING').upper(),55,62,MUTED,self.small)
         mode = 'REPLAY' if ui['replay'] else 'EN PISTE'
         pygame.draw.circle(screen,ACCENT if ui['replay'] else (125,220,162),(width//2-122,45),4)
         self.text(mode,width//2-110,34,TEXT)
@@ -372,7 +372,7 @@ class RaceRenderer:
             # Compact telemetry leaves the middle of the table unobstructed.
             x,y,w = 20,112,250
             self.panel((x,y,w,296))
-            self.text(f'VOITURE {follow+1:02d}',x+18,y+16,color,self.font)
+            self.text(frame.get('names', [f'VOITURE {i+1:02d}' for i in range(count)])[follow][:12],x+18,y+16,color,self.font)
             self.text('TELEMETRIE',x+140,y+19,MUTED,self.small)
             self.text(f'{max(0.,states[follow,3])*3.6:04.1f}',x+16,y+41,TEXT,self.huge)
             self.text('km/h',x+182,y+78,MUTED,self.small)
@@ -380,7 +380,7 @@ class RaceRenderer:
             pygame.draw.line(screen,(57,70,80),(x+18,y+110),(x+w-18,y+110))
             self.text(f'POSITION {rank}/{count}',x+18,y+127,TEXT)
             self.text(f"{frame['distances'][follow]:.0f} m",x+168,y+127,color)
-            self.text(f"SECTEUR {frame['sectors'][follow]+1}",x+18,y+164,MUTED,self.small)
+            self.text(f"{frame.get('unit','SECTEUR')} {frame['sectors'][follow]+1}",x+18,y+164,MUTED,self.small)
             self.text(f"{time-frame['sector_start'][follow]:.2f} s",x+164,y+160,TEXT)
             fraction = max(0.,frame['distances'][follow])%frame['sector_length']/frame['sector_length']
             pygame.draw.rect(screen,(49,62,72),(x+18,y+192,214,5),border_radius=2)
@@ -419,28 +419,29 @@ class RaceRenderer:
                     pygame.draw.rect(screen,(38,54,66),(rx+8,yy,264,49),border_radius=8)
                 self.text(f'{rank:02d}',rx+18,yy+9,ACCENT if rank == 1 else MUTED)
                 draw_car(screen,(rx+68,yy+24),self.colors[i],-90,38)
-                self.text(f'VOITURE {i+1:02d}',rx+95,yy+3,self.colors[i],self.small)
+                self.text(frame.get('names', [f'VOITURE {j+1:02d}' for j in range(count)])[i][:20],rx+95,yy+3,self.colors[i],self.small)
                 status = frame['status'][i]
                 label = f"{frame['distances'][i]:.0f} m / -{leader-frame['best'][i]:.1f} m" if status == 1 else ('ARRIVEE' if status == 2 else 'DNF : '+frame['reasons'][i])
                 self.text(label[:26],rx+95,yy+25,MUTED,self.small)
             gy = 180+count*53
-            self.panel((rx,gy,280,230))
-            self.text('ATELIER RC',rx+18,gy+16,TEXT)
-            self.text(f'VOITURE {follow+1:02d}',rx+175,gy+20,color,self.small)
-            pygame.draw.ellipse(screen,(13,21,28),(rx+22,gy+165,100,24))
-            draw_car(screen,(rx+73,gy+125),color,-14,155)
-            self.text('CARROSSERIE',rx+141,gy+64,MUTED,self.small)
-            for index,paint in enumerate(PALETTE):
-                rect = pygame.Rect(rx+143+(index%3)*39,gy+95+(index//3)*41,29,29)
-                self.buttons[f'paint_{index}'] = rect
-                pygame.draw.rect(screen,paint,rect,border_radius=8)
-                if tuple(color) == paint:
-                    pygame.draw.rect(screen,TEXT,rect.inflate(8,8),2,border_radius=11)
-                    pygame.draw.circle(screen,(22,31,39),rect.center,4)
-                elif rect.collidepoint(self._mouse):
-                    pygame.draw.rect(screen,TEXT,rect.inflate(4,4),1,border_radius=9)
-            self.text('C  /  changer de voiture',rx+18,gy+204,MUTED,self.small)
-            ey = gy+244
+            if not frame.get('competition'):
+                self.panel((rx,gy,280,230))
+                self.text('ATELIER RC',rx+18,gy+16,TEXT)
+                self.text(f'VOITURE {follow+1:02d}',rx+175,gy+20,color,self.small)
+                pygame.draw.ellipse(screen,(13,21,28),(rx+22,gy+165,100,24))
+                draw_car(screen,(rx+73,gy+125),color,-14,155)
+                self.text('CARROSSERIE',rx+141,gy+64,MUTED,self.small)
+                for index,paint in enumerate(PALETTE):
+                    rect = pygame.Rect(rx+143+(index%3)*39,gy+95+(index//3)*41,29,29)
+                    self.buttons[f'paint_{index}'] = rect
+                    pygame.draw.rect(screen,paint,rect,border_radius=8)
+                    if tuple(color) == paint:
+                        pygame.draw.rect(screen,TEXT,rect.inflate(8,8),2,border_radius=11)
+                        pygame.draw.circle(screen,(22,31,39),rect.center,4)
+                    elif rect.collidepoint(self._mouse):
+                        pygame.draw.rect(screen,TEXT,rect.inflate(4,4),1,border_radius=9)
+                self.text('C  /  changer de voiture',rx+18,gy+204,MUTED,self.small)
+            ey = gy if frame.get('competition') else gy+244
             self.panel((rx,ey,280,112))
             self.text('EVENEMENTS',rx+18,ey+13,TEXT,self.small)
             events = frame['events'][-2:]
@@ -458,7 +459,8 @@ class RaceRenderer:
                  ('slower','- VITESSE',83,False),('faster','+ VITESSE',83,False),
                  ('follow','VOITURE [C]',100,False),('overview','VUE [TAB]',91,ui['overview']),
                  ('lidar','LIDAR [L]',82,ui['lidar']),('trails','TRACES [T]',90,ui.get('trails',True)),
-                 ('weather','METEO [W]',94,False),('profile','CIRCUIT [P]',94,False),
+                 ('weather','METEO [W]',94,False),
+                 ('menu' if frame.get('competition') else 'profile','ARRETER [ESC]' if frame.get('competition') else 'CIRCUIT [P]',94,False),
                  ('record','STOP REC' if ui['recording'] else 'REC [E]',80,ui['recording']),
                  ('replay','LIVE [V]' if ui['replay'] else 'REPLAY [V]',90,ui['replay']),
                  ('infos','INFOS [H]',91,ui.get('infos',True))]
