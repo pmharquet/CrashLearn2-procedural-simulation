@@ -1,0 +1,1 @@
+"""CrashLearn application package."""
