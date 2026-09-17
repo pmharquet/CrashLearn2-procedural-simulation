@@ -103,7 +103,7 @@ from procedural_road import EndlessRoad
 def load_agent(path=None):
     from agent_loader import validate_and_load_agent
     if path is None:
-        path = Path(__file__).resolve().parent.parent / 'T-AIA-901-NCY-9-1-crashlearn-2/submission/procedural'
+        path = Path(__file__).resolve().parent.parent / 'T-AIA-901-NCY-9-1-crashlearn-2/submission/best'
     return validate_and_load_agent(path, Path(path).name)[1]
 
 WEATHER_MODES = ('original', 'dynamic', 'stress', 'cycle')

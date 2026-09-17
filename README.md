@@ -29,7 +29,7 @@ Par défaut, le simulateur charge l’agent du dépôt voisin :
 T-AIA-901/
 ├── CrashLearn2-procedural-simulation/
 └── T-AIA-901-NCY-9-1-crashlearn-2/
-    └── submission/procedural/
+    └── submission/best/
 ```
 
 Si ton agent est ailleurs, indique son dossier avec `--agent CHEMIN`. Chaque voiture dispose de sa propre instance ; aucun pilote de remplacement n’est activé silencieusement.
