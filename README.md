@@ -2,9 +2,9 @@
 
 Un simulateur de course pour observer et entraîner des IA sur une **route qui se construit devant les voitures et disparaît derrière elles**. Quatre véhicules, une météo qui modifie l’adhérence et des tracés reproductibles à partir d’une graine.
 
-![Course procédurale à ×10 : quatre IA, météo dynamique et génération de route en vue large](docs/media/course-x10.gif)
+![Interface RC à ×10 : voitures personnalisables, vue rapprochée puis aperçu du circuit](docs/media/course-x10.gif)
 
-*120 secondes de simulation en 12 secondes de GIF, en boucle. Rendu réel du simulateur, quatre agents ONNX, graine 6, météo dynamique et lecture à ×10. L’export est calculé hors ligne ; il ne mesure pas les performances en temps réel de la machine.*
+*120 secondes de simulation en 12 secondes de GIF, en boucle à 12 images/s. Nouvelle interface RC et rendu GPU : 8 secondes en vue rapprochée, puis 4 secondes en vue large. Course démarrée avec quatre agents ONNX `submission/procedural`, graine 6 et météo dynamique. L’export est calculé hors ligne ; ses compteurs de lecture ne mesurent pas les performances en temps réel de la machine.*
 
 [Démarrage](#démarrage) · [Commandes](#commandes) · [Météo et circuits](#météo-et-circuits) · [Entraînement](#entraînement) · [Vérification](#vérification)
 
