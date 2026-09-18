@@ -4,7 +4,7 @@
 
 ## Préparer une course
 
-Lancer `python -m crashlearn_sim`, choisir un circuit fixe ou procédural, puis préparer les voitures dans le paddock : nom, couleur et pilote. Le départ suit le compte à rebours. À l’arrivée, recommencer avec les mêmes paramètres ou revenir au menu.
+Lancer `python -m crashlearn_sim`, choisir un circuit fixe ou procédural, puis préparer les voitures dans le paddock : nom, couleur et pilote. Dans la sélection du circuit, `COLLISIONS RC` active ou désactive les contacts entre voitures ; lorsqu’elles sont désactivées, les pilotes ne perçoivent plus les autres RC au LiDAR ni dans leurs observations d’adversaires. Les rails restent actifs. Le départ suit le compte à rebours. À l’arrivée, recommencer avec les mêmes paramètres ou revenir au menu.
 
 ## Commandes
 
@@ -71,6 +71,8 @@ Depuis la racine du dépôt :
 ```powershell
 .venv/Scripts/python -m crashlearn_sim.training --steps 200000 --cars 1 --weather cycle --output recordings/procedural_ppo
 ```
+
+Ajouter `--no-vehicle-collisions` pour entraîner sans contacts ni perception des autres véhicules. Sans cette option, les collisions et leur perception sont activées.
 
 Sélectionner ensuite `recordings/procedural_ppo.zip` comme pilote dans le paddock. Avec plusieurs voitures, passer `--agent CHEMIN` pour charger les adversaires ; sans chemin explicite, définir `CRASHLEARN_AGENT_DIR` avec le dossier du pilote.
 

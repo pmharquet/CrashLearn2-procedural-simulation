@@ -135,6 +135,8 @@ class RaceMenu(MenuView):
             self.config.weather = WEATHER_MODES[
                 (WEATHER_MODES.index(self.config.weather) + 1) % len(WEATHER_MODES)
             ]
+        elif command == "vehicle_collisions":
+            self.config.vehicle_collisions = not self.config.vehicle_collisions
         elif command == "profile":
             self.config.profile = ROAD_PROFILES[
                 (ROAD_PROFILES.index(self.config.profile) + 1) % len(ROAD_PROFILES)
