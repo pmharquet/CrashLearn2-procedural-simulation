@@ -97,10 +97,9 @@ class PilotPool:
     def actions(self, sim, strict=False):
         actions = [(0.0, 0.0) for _ in self.pilots]
         active = np.flatnonzero(sim.status == 1)
-        info = sim.info()
         for i in active:
             try:
-                self.pilots[i][1].send((sim.observation(i), info))
+                self.pilots[i][1].send((sim.observation(i), sim.pilot_info(i)))
             except (OSError, EOFError):
                 if strict:
                     raise ValueError(f"{sim.config.drivers[i].name} : pilote arrêté")
