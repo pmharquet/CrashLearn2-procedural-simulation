@@ -31,7 +31,7 @@ Le dépôt contient les circuits et le simulateur, mais aucun modèle entraîné
 .venv/Scripts/python -m crashlearn_sim
 ```
 
-1. Choisir un circuit fixe ou le procédural et la durée de course.
+1. Choisir un circuit fixe ou le procédural, la durée de course et activer ou non les collisions entre RC.
 2. Préparer 1 à 4 voitures : nom, couleur et pilote.
 3. Démarrer et attendre le compte à rebours.
 4. Utiliser **Échap / Arrêter** pour revenir au paddock, ou **R** pour recommencer.

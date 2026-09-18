@@ -23,6 +23,7 @@ class ProceduralEnv(gym.Env):
         profile="mixed",
         agent_path=None,
         finish_distance=None,
+        vehicle_collisions=True,
     ):
         self.sim = ProceduralSimulation(
             max_steps=max_steps,
@@ -30,6 +31,7 @@ class ProceduralEnv(gym.Env):
             weather=weather,
             profile=profile,
             finish_distance=finish_distance,
+            vehicle_collisions=vehicle_collisions,
         )
         self.opponents = [load_agent(agent_path) for _ in range(num_cars - 1)]
         self.action_space = gym.spaces.Box(-1.0, 1.0, (2,), dtype=np.float32)
@@ -63,8 +65,8 @@ class ProceduralEnv(gym.Env):
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
-        obs, info = self.sim.reset(int(self.np_random.integers(0, 2**31)))
-        return self.encode(obs), info
+        obs, _ = self.sim.reset(int(self.np_random.integers(0, 2**31)))
+        return self.encode(obs), self.sim.pilot_info(0)
 
     def step(self, action):
         action = np.asarray(action, dtype=float)
@@ -74,14 +76,14 @@ class ProceduralEnv(gym.Env):
         actions = [(4.0 + 6.0 * action[0], 0.4189 * action[1])]
         for i, agent in enumerate(self.opponents, 1):
             actions.append(
-                agent.predict(self.sim.observation(i), self.sim.info())
+                agent.predict(self.sim.observation(i), self.sim.pilot_info(i))
                 if self.sim.status[i] == 1
                 else (0.0, 0.0)
             )
-        obs, reward, terminated, truncated, info = self.sim.step(actions)
+        obs, reward, terminated, truncated, _ = self.sim.step(actions)
         # Training ends when car 0 retires, even if opponents remain active.
         terminated = terminated or self.sim.status[0] != 1
-        return self.encode(obs), reward, bool(terminated), truncated, info
+        return self.encode(obs), reward, bool(terminated), truncated, self.sim.pilot_info(0)
 
 
 def main():
@@ -95,6 +97,12 @@ def main():
     parser.add_argument("--profile", choices=ROAD_PROFILES, default="mixed")
     parser.add_argument("--agent", type=Path)
     parser.add_argument("--finish-distance", type=float)
+    parser.add_argument(
+        "--vehicle-collisions",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Autoriser les contacts et la perception des autres véhicules.",
+    )
     parser.add_argument("--output", type=Path, default=Path("recordings/procedural_ppo"))
     args = parser.parse_args()
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -104,6 +112,7 @@ def main():
         profile=args.profile,
         agent_path=args.agent,
         finish_distance=args.finish_distance,
+        vehicle_collisions=args.vehicle_collisions,
     )
     try:
         model = PPO("MlpPolicy", env, seed=args.seed, verbose=1, n_steps=1024, batch_size=64)

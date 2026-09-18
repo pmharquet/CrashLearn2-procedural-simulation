@@ -255,9 +255,8 @@ def make_agents(args):
 
 
 def drive(sim, agents):
-    info = sim.info()
     actions = [
-        agent.predict(sim.observation(i), info) if sim.status[i] == 1 else (0.0, 0.0)
+        agent.predict(sim.observation(i), sim.pilot_info(i)) if sim.status[i] == 1 else (0.0, 0.0)
         for i, agent in enumerate(agents)
     ]
     return sim.step(actions)

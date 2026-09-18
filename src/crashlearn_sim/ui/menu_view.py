@@ -166,6 +166,12 @@ class MenuView:
         a.text("CHOISIR LE TERRAIN", right + 22, 131, TEXT, a.big)
         self.draw_track_grid(pygame.Rect(right + 20, 181, sidebar - 50, bottom - 351))
         a.button(
+            "vehicle_collisions",
+            "COLLISIONS RC  /  " + ("OUI" if self.config.vehicle_collisions else "NON"),
+            (right + 20, bottom - 180, sidebar - 40, 34),
+            self.config.vehicle_collisions,
+        )
+        a.button(
             "weather",
             "METEO  /  " + self.config.weather.upper(),
             (right + 20, bottom - 136, sidebar - 40, 34),

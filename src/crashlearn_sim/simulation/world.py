@@ -39,6 +39,7 @@ class ProceduralSimulation:
         weather="original",
         profile="mixed",
         finish_distance=None,
+        vehicle_collisions=True,
     ):
         if not 1 <= num_cars <= 4:
             raise ValueError("num_cars must be 1..4")
@@ -53,6 +54,7 @@ class ProceduralSimulation:
         self.weather_mode = weather
         self.profile = profile
         self.finish_distance = finish_distance
+        self.vehicle_collisions = bool(vehicle_collisions)
         self.reset(seed)
 
     @property
@@ -197,10 +199,19 @@ class ProceduralSimulation:
             raise ValueError("Invalid car slot")
         i = agent_id
         state = self.states[i]
-        scan_key = (i, self.states[:, [0, 1, 4]].tobytes(), self.status.tobytes())
+        scan_key = (
+            self.vehicle_collisions,
+            i,
+            self.states[:, [0, 1, 4]].tobytes(),
+            self.status.tobytes(),
+        )
         if scan_key not in self._scan_cache:
             scan = scan_walls(state[:2], state[4], self.road.left, self.road.right)
-            hits = scan_vehicles(state[:2], state[4], scan, self.states, self.status, i)
+            hits = (
+                scan_vehicles(state[:2], state[4], scan, self.states, self.status, i)
+                if self.vehicle_collisions
+                else np.full(100, -1, dtype=np.int32)
+            )
             scan = np.clip(scan * self.scan_noise[i], 0.1, 15.0).astype(np.float32)
             scan[self.scan_dropouts[i]] = 0.1
             hits[self.scan_dropouts[i]] = -1
@@ -208,7 +219,9 @@ class ProceduralSimulation:
         c, s = np.cos(state[4]), np.sin(state[4])
         opponents = {}
         for j in range(4):
-            active = j < self.num_cars and j != i and self.status[j] == 1
+            active = (
+                self.vehicle_collisions and j < self.num_cars and j != i and self.status[j] == 1
+            )
             dx, dy = self.states[j, :2] - state[:2] if active else (0.0, 0.0)
             yaw = (
                 float((self.states[j, 4] - state[4] + np.pi) % (2 * np.pi) - np.pi)
@@ -237,6 +250,16 @@ class ProceduralSimulation:
             opponents=opponents,
             friction=self.friction,
         )
+
+    def pilot_info(self, agent_id=0):
+        """Return race info without opponent sensor metadata when vehicles are ghosted."""
+        if not 0 <= agent_id < self.num_cars:
+            raise ValueError("Invalid car slot")
+        info = self.info()
+        if not self.vehicle_collisions:
+            info["collisions"]["vehicle"] = [False] * 4
+            info["opponents_mask"] = [False] * 4
+        return info
 
     def info(self):
         def padded(array, value=0):
@@ -272,6 +295,8 @@ class ProceduralSimulation:
         self.event(f"Voiture {i + 1} : abandon ({reason})")
 
     def _resolve_contacts(self):
+        if not self.vehicle_collisions:
+            return
         for i in range(self.num_cars):
             for j in range(i + 1, self.num_cars):
                 if self.status[i] != 1 or self.status[j] != 1:
@@ -449,6 +474,7 @@ class ProceduralSimulation:
                 self.observation(i)["lidar_vehicle_ids"].tolist() for i in range(self.num_cars)
             ],
             finish_distance=self.finish_distance,
+            vehicle_collisions=self.vehicle_collisions,
             terminated=self.terminated,
             truncated=self.truncated,
         )

@@ -33,6 +33,7 @@ class Competition:
     seed: int = 42
     weather: str = "cycle"
     profile: str = "mixed"
+    vehicle_collisions: bool = True
     drivers: list = field(default_factory=list)
 
     def validate(self):
@@ -132,6 +133,7 @@ class CompetitionSimulation(ProceduralSimulation):
             weather=config.weather,
             profile=config.profile,
             finish_distance=length * config.limit if config.limit else None,
+            vehicle_collisions=config.vehicle_collisions,
         )
 
     def reset(self, seed=0):
