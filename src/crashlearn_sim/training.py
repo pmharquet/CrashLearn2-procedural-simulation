@@ -65,8 +65,8 @@ class ProceduralEnv(gym.Env):
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
-        obs, info = self.sim.reset(int(self.np_random.integers(0, 2**31)))
-        return self.encode(obs), info
+        obs, _ = self.sim.reset(int(self.np_random.integers(0, 2**31)))
+        return self.encode(obs), self.sim.pilot_info(0)
 
     def step(self, action):
         action = np.asarray(action, dtype=float)
@@ -80,10 +80,10 @@ class ProceduralEnv(gym.Env):
                 if self.sim.status[i] == 1
                 else (0.0, 0.0)
             )
-        obs, reward, terminated, truncated, info = self.sim.step(actions)
+        obs, reward, terminated, truncated, _ = self.sim.step(actions)
         # Training ends when car 0 retires, even if opponents remain active.
         terminated = terminated or self.sim.status[0] != 1
-        return self.encode(obs), reward, bool(terminated), truncated, info
+        return self.encode(obs), reward, bool(terminated), truncated, self.sim.pilot_info(0)
 
 
 def main():

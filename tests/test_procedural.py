@@ -159,6 +159,34 @@ class ProceduralTests(unittest.TestCase):
         self.assertFalse(env.step([0, 0])[3])
         self.assertTrue(env.step([0, 0])[3])
 
+    def test_ghost_mode_removes_vehicle_contacts_and_sensor_data(self):
+        sim = ProceduralSimulation(num_cars=2, vehicle_collisions=False)
+        sim.states[:, :2] = [[0.0, 0.0], [0.5, 0.0]]
+        sim.states[:, 3] = [4.0, 0.0]
+        before = sim.states.copy()
+
+        sim._resolve_contacts()
+
+        np.testing.assert_array_equal(sim.states, before)
+        self.assertFalse(np.any(sim.vehicle_hits))
+        observation = sim.observation(0)
+        self.assertTrue(np.all(observation["lidar_vehicle_ids"] == -1))
+        self.assertTrue(all(not opponent["active"] for opponent in observation["opponents"].values()))
+        info = sim.pilot_info(0)
+        self.assertFalse(any(info["opponents_mask"]))
+        self.assertFalse(any(info["collisions"]["vehicle"]))
+
+    def test_training_environment_accepts_ghost_mode(self):
+        env = ProceduralEnv(max_steps=2, vehicle_collisions=False)
+        try:
+            observation, info = env.reset(seed=7)
+            self.assertFalse(env.sim.vehicle_collisions)
+            self.assertEqual(observation.shape, (131,))
+            self.assertFalse(any(info["opponents_mask"]))
+            self.assertTrue(np.all(env.sim.observation(0)["lidar_vehicle_ids"] == -1))
+        finally:
+            env.close()
+
 
 class RaceSystemsTests(unittest.TestCase):
     def test_weather_seed_noise_and_read_order(self):
