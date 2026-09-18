@@ -220,10 +220,7 @@ class ProceduralSimulation:
         opponents = {}
         for j in range(4):
             active = (
-                self.vehicle_collisions
-                and j < self.num_cars
-                and j != i
-                and self.status[j] == 1
+                self.vehicle_collisions and j < self.num_cars and j != i and self.status[j] == 1
             )
             dx, dy = self.states[j, :2] - state[:2] if active else (0.0, 0.0)
             yaw = (

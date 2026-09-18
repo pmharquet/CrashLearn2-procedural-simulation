@@ -171,7 +171,9 @@ class ProceduralTests(unittest.TestCase):
         self.assertFalse(np.any(sim.vehicle_hits))
         observation = sim.observation(0)
         self.assertTrue(np.all(observation["lidar_vehicle_ids"] == -1))
-        self.assertTrue(all(not opponent["active"] for opponent in observation["opponents"].values()))
+        self.assertTrue(
+            all(not opponent["active"] for opponent in observation["opponents"].values())
+        )
         info = sim.pilot_info(0)
         self.assertFalse(any(info["opponents_mask"]))
         self.assertFalse(any(info["collisions"]["vehicle"]))
